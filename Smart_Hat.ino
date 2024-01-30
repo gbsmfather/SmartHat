@@ -92,7 +92,7 @@ uint8_t Sw_cnt = 0;
 
 uint8_t led_state = 0, charge_state = 0, ble_pair = 0, Tx_Busy, Tx_Retry; 
 
-uint8_t Boot_Check = 0;
+uint8_t Boot_Check = STATE_CHARGING;
 
 uint16_t Tx_Timer;
 
@@ -872,28 +872,12 @@ void setup()
 
 	Serial.println(fullFlag);
 
-	Boot_Check = 1;
+	Boot_Check = STATE_TO_RUN;
 }
 
 
 void loop()
 {
-  if(event_hat_flag & EVENT_HAT_BLE_CONNECT) {
-    event_hat_flag &= ~EVENT_HAT_BLE_CONNECT;
-
-    deviceConnected = true;
-    timer_10ms = 0;
-    event_timer_flag = 0;
-  }
-
-  if(event_hat_flag & EVENT_HAT_BLE_DISCONNECT) {
-    event_hat_flag &= ~EVENT_HAT_BLE_DISCONNECT;
-
-    deviceConnected = false;
-
-    Boot_Check = 1;
-  }
-
   if (Boot_Check == STATE_CHARGING) { // 충전 상태 
     if(digitalRead(PG_Pin) == LOW) {
       digitalWrite(PSM_CD_Pin, LOW);
@@ -917,7 +901,7 @@ void loop()
       delay(100); // 디바운스를 위한 짧은 지연
       //activateReset();
 
-      Boot_Check = 1;		
+      Boot_Check = STATE_TO_RUN;		
     }
   }
   else if (Boot_Check == STATE_TO_RUN) { // 페어링
@@ -930,9 +914,25 @@ void loop()
       startBleAdvertising();
     }
     
-    Boot_Check = 2;
+    Boot_Check = STATE_RUNNING;
   }
   else if (Boot_Check == STATE_RUNNING) { // 충전 해제 완료
+    if(event_hat_flag & EVENT_HAT_BLE_CONNECT) {
+      event_hat_flag &= ~EVENT_HAT_BLE_CONNECT;
+
+      deviceConnected = true;
+      timer_10ms = 0;
+      event_timer_flag = 0;
+    }
+
+    else if(event_hat_flag & EVENT_HAT_BLE_DISCONNECT) {
+      event_hat_flag &= ~EVENT_HAT_BLE_DISCONNECT;
+
+      deviceConnected = false;
+
+      Boot_Check = STATE_TO_RUN;
+    }
+    
     if(digitalRead(PG_Pin) == LOW) {
       
       digitalWrite(PSM_CD_Pin, LOW); // 충전 진행
@@ -945,7 +945,7 @@ void loop()
       timer_10ms = 0;
       event_timer_flag = 0;
 
-      Boot_Check = 0;
+      Boot_Check = STATE_CHARGING;
     }
     else {
       if(digitalRead(SwPin) == LOW) {
@@ -1026,7 +1026,7 @@ void loop()
       }
     }
   }
-  else {
+  else { // UNKNOWN STATE
   }
 
 	
