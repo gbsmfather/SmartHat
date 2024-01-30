@@ -166,10 +166,51 @@ void ARDUINO_ISR_ATTR onTimer()
 	portENTER_CRITICAL_ISR(&timerMux);
 	isrCounter = isrCounter + 1;
 	lastIsrAt = millis();
+  timer_10ms++;
 	portEXIT_CRITICAL_ISR(&timerMux);
 	// Give a semaphore that we can check in the loop
 	xSemaphoreGiveFromISR(timerSemaphore, NULL);
 	// It is safe to use digitalRead/Write here if you want to toggle an output
+
+  if((timer_10ms % 10) == 0) 			// 100밀리초
+  {
+    event_timer_flag |= EVENT_TIMER_100MS;
+  }
+
+  if((timer_10ms % 20) == 0) 			// 200밀리초
+  {
+    event_timer_flag |= EVENT_TIMER_200MS;
+  }
+
+  if((timer_10ms % 30) == 0) 			// 300밀리초
+  {
+    event_timer_flag |= EVENT_TIMER_300MS;
+  }
+
+  if((timer_10ms % 50) == 0) 			// 500밀리초
+  {
+    event_timer_flag |= EVENT_TIMER_500MS;
+  }
+
+  if((timer_10ms % 100) == 0) 			// 1초
+  {
+    event_timer_flag |= EVENT_TIMER_1S;
+  }
+
+  if((timer_10ms % 200) == 0) 			// 2초
+  {
+    event_timer_flag |= EVENT_TIMER_2S;
+  }
+
+  if((timer_10ms % 300) == 0) 			// 3초
+  {
+    event_timer_flag |= EVENT_TIMER_3S;
+  }
+
+  if((timer_10ms % 500) == 0) 			// 5초
+  {
+    event_timer_flag |= EVENT_TIMER_5S;
+  }
 }
 
 
@@ -761,6 +802,10 @@ void measureSensors() {
 }
 
 
+#define STATE_CHARGING 0
+#define STATE_TO_RUN 1
+#define STATE_RUNNING 2
+
 void setup()
 {
 	delay(100);
@@ -848,108 +893,8 @@ void loop()
 
     Boot_Check = 1;
   }
-  
-  if(xSemaphoreTake(timerSemaphore, 0) == pdTRUE)
-	{
-		uint32_t isrCount = 0, isrTime = 0;
-		// Read the interrupt count and time
-		portENTER_CRITICAL(&timerMux);
-//		isrCount = isrCounter;
-//		isrTime = lastIsrAt;
-		portEXIT_CRITICAL(&timerMux);
 
-		// Print it
-//		Serial.print(isrCount);
-//		Serial.print(" second");		
-//		Serial.print(" at ");
-//		Serial.print(isrTime);
-//		Serial.println(" ms");
-
-		timer_10ms++;
-
-		if(Tx_Timer)
-		{
-			Tx_Timer--;
-		}
-
-		if(fullFlag)
-		{
-//			togglePin(Buzzer_Pin);
-
-			if((timer_10ms % 10) == 0) 				// 100ms
-			{
-				//timer_1s++;
-			}
-
-			if((timer_10ms % 100) == 0) 			// 1초
-			{
-				Sw_cnt++;
-			
-//				if(1 == ble_pair)
-				{
-					if(pair_timer)
-					{
-						pair_timer--;
-					}
-				}
-			}
-		}
-		else
-		{
-      if((timer_10ms % 10) == 0) 			// 100밀리초
-			{
-				event_timer_flag |= EVENT_TIMER_100MS;
-			}
-
-      if((timer_10ms % 20) == 0) 			// 100밀리초
-			{
-				event_timer_flag |= EVENT_TIMER_200MS;
-			}
-
-      if((timer_10ms % 30) == 0) 			// 100밀리초
-			{
-				event_timer_flag |= EVENT_TIMER_300MS;
-			}
-
-      if((timer_10ms % 50) == 0) 			// 100밀리초
-			{
-				event_timer_flag |= EVENT_TIMER_500MS;
-			}
-
-			if((timer_10ms % 100) == 0) 			// 1초
-			{
-        event_timer_flag |= EVENT_TIMER_1S;
-
-				Sw_cnt++;
-				timer_1s++;
-			
-//				if(1 == ble_pair)
-				{
-					if(pair_timer)
-					{
-						pair_timer--;
-					}
-				}
-			}
-
-      if((timer_10ms % 200) == 0) 			// 2초
-			{
-        event_timer_flag |= EVENT_TIMER_2S;
-			}
-
-      if((timer_10ms % 300) == 0) 			// 3초
-			{
-        event_timer_flag |= EVENT_TIMER_3S;
-			}
-
-      if((timer_10ms % 500) == 0) 			// 3초
-			{
-        event_timer_flag |= EVENT_TIMER_5S;
-			}
-		}
-	}
-
-  if (Boot_Check == 0) { // 충전 상태 
+  if (Boot_Check == STATE_CHARGING) { // 충전 상태 
     if(digitalRead(PG_Pin) == LOW) {
       digitalWrite(PSM_CD_Pin, LOW);
 
@@ -975,7 +920,7 @@ void loop()
       Boot_Check = 1;		
     }
   }
-  else if (Boot_Check == 1) { // 페어링
+  else if (Boot_Check == STATE_TO_RUN) { // 페어링
     digitalWrite(ledPin, LOW);
     timer_10ms = 0;
     event_timer_flag = 0;
@@ -987,7 +932,7 @@ void loop()
     
     Boot_Check = 2;
   }
-  else if (Boot_Check == 2) { // 충전 해제 완료
+  else if (Boot_Check == STATE_RUNNING) { // 충전 해제 완료
     if(digitalRead(PG_Pin) == LOW) {
       
       digitalWrite(PSM_CD_Pin, LOW); // 충전 진행
