@@ -456,22 +456,46 @@ void writeRegister(uint8_t deviceAddress, uint8_t registerAddress, uint8_t data)
 }
 
 
-int LSM6DSO_readAcceleration(float& x, float& y, float& z)
+int LSM6DSO_readAcceleration(uint8_t& x, uint8_t& y, uint8_t& z)
 {
-	int16_t data[3];
+  uint8_t address = 0X28;
 
-	if(!LSM6DSO_readRegisters(0X28, (uint8_t*)data, sizeof(data)))
-	{
-		x = NAN;
-		y = NAN;
-		z = NAN;
+  Wire.beginTransmission(LSM6DSO32_ADDRESS);
+	Wire.write(address);
+	Wire.endTransmission();    
 
-		return 0;
-	}
+  Wire.requestFrom(LSM6DSO32_ADDRESS, (uint8_t)6);
+  uint8_t xlg = Wire.read();
+  uint8_t xhg = Wire.read();
+  uint8_t ylg = Wire.read();
+  uint8_t yhg = Wire.read();
+  uint8_t zlg = Wire.read();
+  uint8_t zhg = Wire.read();
 
-	x = data[0] * 4.0 / 32768.0;
-	y = data[1] * 4.0 / 32768.0;
-	z = data[2] * 4.0 / 32768.0;
+  // combine high and low bytes
+  int16_t ax = (int16_t)(xhg << 8 | xlg);
+  int16_t ay = (int16_t)(yhg << 8 | ylg);
+  int16_t az = (int16_t)(zhg << 8 | zlg);
+
+  x = (uint8_t)(abs(ax) >> 4);
+  y = (uint8_t)(abs(ay) >> 4);
+  z = (uint8_t)(abs(az) >> 4);
+
+
+	// int16_t data[3];
+
+	// if(!LSM6DSO_readRegisters(0X28, (uint8_t*)data, sizeof(data)))
+	// {
+	// 	x = NAN;
+	// 	y = NAN;
+	// 	z = NAN;
+
+	// 	return 0;
+	// }
+
+	// x = data[0] * 4.0 / 32768.0;
+	// y = data[1] * 4.0 / 32768.0;
+	// z = data[2] * 4.0 / 32768.0;
 
 	return 1;
 }
@@ -479,20 +503,43 @@ int LSM6DSO_readAcceleration(float& x, float& y, float& z)
 
 int LSM6DSO_readGyroscope(float& x, float& y, float& z)
 {
-	int16_t data[3];
+  uint8_t address = 0X22;
 
-	if(!LSM6DSO_readRegisters(0X22, (uint8_t*)data, sizeof(data)))
-	{
-		x = NAN;
-		y = NAN;
-		z = NAN;
+  Wire.beginTransmission(LSM6DSO32_ADDRESS);
+	Wire.write(address);
+	Wire.endTransmission();    
 
-		return 0;
-	}
+  Wire.requestFrom(LSM6DSO32_ADDRESS, (uint8_t)6);
+  uint8_t xlg = Wire.read();
+  uint8_t xhg = Wire.read();
+  uint8_t ylg = Wire.read();
+  uint8_t yhg = Wire.read();
+  uint8_t zlg = Wire.read();
+  uint8_t zhg = Wire.read();
 
-	x = data[0] * 2000.0 / 32768.0;
-	y = data[1] * 2000.0 / 32768.0;
-	z = data[2] * 2000.0 / 32768.0;
+  // combine high and low bytes
+  int16_t gx = (int16_t)(xhg << 8 | xlg);
+  int16_t gy = (int16_t)(yhg << 8 | ylg);
+  int16_t gz = (int16_t)(zhg << 8 | zlg);
+
+  x = (uint8_t)(abs(gx) >> 4);
+  y = (uint8_t)(abs(gy) >> 4);
+  z = (uint8_t)(abs(gz) >> 4);
+
+	// int16_t data[3];
+
+	// if(!LSM6DSO_readRegisters(0X22, (uint8_t*)data, sizeof(data)))
+	// {
+	// 	x = NAN;
+	// 	y = NAN;
+	// 	z = NAN;
+
+	// 	return 0;
+	// }
+
+	// x = data[0] * 2000.0 / 32768.0;
+	// y = data[1] * 2000.0 / 32768.0;
+	// z = data[2] * 2000.0 / 32768.0;
 
 	return 1;
 }
@@ -500,54 +547,91 @@ int LSM6DSO_readGyroscope(float& x, float& y, float& z)
 
 int LSM6DSO_readTemperature(int& temperature_deg)
 {
-	float temperature_float = 0;
-	LSM6DSO_readTemperatureFloat(temperature_float);
+  uint8_t address = 0X20;
 
-	temperature_deg = static_cast<int>(temperature_float);
-
-	return 1;
-}
-
-int LSM6DSO_readTemperatureFloat(float& temperature_deg)
-{
-	/* Read the raw temperature from the sensor. */
-	int16_t temperature_raw = 0;
-
-	if(LSM6DSO_readRegisters(0X20, reinterpret_cast<uint8_t*>(&temperature_raw), sizeof(temperature_raw)) != 1)
-	{
-		return 0;
-	}
-
-	/* Convert to °C. */
-	static int const TEMPERATURE_LSB_per_DEG = 256;
-	static int const TEMPERATURE_OFFSET_DEG = 25;
-
-	temperature_deg = (static_cast<float>(temperature_raw) / TEMPERATURE_LSB_per_DEG) + TEMPERATURE_OFFSET_DEG;
-
-	return 1;
-}
-
-
-
-
-int LSM6DSO_readRegisters(uint8_t address, uint8_t* data, size_t length)
-{
-	Wire.beginTransmission(LSM6DSO32_ADDRESS);
+  Wire.beginTransmission(LSM6DSO32_ADDRESS);
 	Wire.write(address);
 	Wire.endTransmission();    
 
-	if(Wire.requestFrom(LSM6DSO32_ADDRESS, length) != length)
-	{
-		return 0;
-	}
+  Wire.requestFrom(LSM6DSO32_ADDRESS, (uint8_t)2);
+  uint8_t deglg = Wire.read();
+  uint8_t deghg = Wire.read();
+  
 
-	for(size_t i = 0; i < length; i++)
-	{
-		*data++ = Wire.read();
-	}
+  // combine high and low bytes
+  int16_t temperature_raw = (int16_t)(deghg << 8 | deglg);
+
+  /* Convert to °C. */
+	static int const TEMPERATURE_LSB_per_DEG = 256;
+	static int const TEMPERATURE_OFFSET_DEG = 25;
+
+	temperature_deg = static_cast<int>((static_cast<float>(temperature_raw) / TEMPERATURE_LSB_per_DEG) + TEMPERATURE_OFFSET_DEG);
+  
+  // x = (uint8_t)(abs(gx) >> 4);
+  // y = (uint8_t)(abs(gy) >> 4);
+  // z = (uint8_t)(abs(gz) >> 4);
+
+	// float temperature_float = 0;
+	// LSM6DSO_readTemperatureFloat(temperature_float);
+
+	// temperature_deg = static_cast<int>(temperature_float);
 
 	return 1;
 }
+
+// int LSM6DSO_readTemperatureFloat(float& temperature_deg)
+// {
+// 	/* Read the raw temperature from the sensor. */
+// 	int16_t temperature_raw = 0;
+
+// 	if(LSM6DSO_readRegisters(0X20, reinterpret_cast<uint8_t*>(&temperature_raw), sizeof(temperature_raw)) != 1)
+// 	{
+// 		return 0;
+// 	}
+
+// 	/* Convert to °C. */
+// 	static int const TEMPERATURE_LSB_per_DEG = 256;
+// 	static int const TEMPERATURE_OFFSET_DEG = 25;
+
+// 	temperature_deg = (static_cast<float>(temperature_raw) / TEMPERATURE_LSB_per_DEG) + TEMPERATURE_OFFSET_DEG;
+
+// 	return 1;
+// }
+
+
+
+
+// int LSM6DSO_readRegisters(uint8_t address, size_t length, int16_t& gx, int16_t& gy, int16_t& gz)
+// {
+// 	Wire.beginTransmission(LSM6DSO32_ADDRESS);
+// 	Wire.write(address);
+// 	Wire.endTransmission();    
+
+// 	// if(Wire.requestFrom(LSM6DSO32_ADDRESS, length) != length)
+// 	// {
+// 	// 	return 0;
+// 	// }
+
+// 	// for(size_t i = 0; i < length; i++)
+// 	// {
+// 	// 	*data++ = Wire.read();
+// 	// }
+
+//   Wire.requestFrom(LSM6DSO32_ADDRESS, (uint8_t)length);
+//   uint8_t xlg = Wire.read();
+//   uint8_t xhg = Wire.read();
+//   uint8_t ylg = Wire.read();
+//   uint8_t yhg = Wire.read();
+//   uint8_t zlg = Wire.read();
+//   uint8_t zhg = Wire.read();
+
+//   // combine high and low bytes
+//   gx = (int16_t)(xhg << 8 | xlg);
+//   gy = (int16_t)(yhg << 8 | ylg);
+//   gz = (int16_t)(zhg << 8 | zlg);
+
+// 	return 1;
+// }
 
 
 void DataMake(void)
@@ -680,80 +764,90 @@ void measureAcceleration() {
   int16_t temp_accX, temp_accY, temp_accZ;
   
 
-  LSM6DSO_readAcceleration(x, y, z);
-  temp_accX = (x * 100);
-  temp_accY = (y * 100);
-  temp_accZ = (z * 100);
+  LSM6DSO_readAcceleration(temp_accX, temp_accY, temp_accZ);
 
-  if(temp_accX < 0)
-  {
-    temp_accX = 0 - temp_accX;
-  }
-  accelerometerDataX = (((temp_accX - (0x8000)) / (0x7FFF - 0x8000)) * 127);
-  if(temp_accX < 0)
-  {
-    accelerometerDataX = 0 - accelerometerDataX;
-  }
+  accelerometerDataX = temp_accX;
+  accelerometerDataY = temp_accY;
+  accelerometerDataZ = temp_accZ;
 
-  if(temp_accY < 0)
-  {
-    temp_accY = 0 - temp_accY;
-  }
-  accelerometerDataY = (((temp_accY - (0x8000)) / (0x7FFF - 0x8000)) * 127);
-  if(temp_accY < 0)
-  {
-    accelerometerDataY = 0 - accelerometerDataY;
-  }
+  // temp_accX = (x * 100);
+  // temp_accY = (y * 100);
+  // temp_accZ = (z * 100);
+
+  // if(temp_accX < 0)
+  // {
+  //   temp_accX = 0 - temp_accX;
+  // }
+  // accelerometerDataX = (((temp_accX - (0x8000)) / (0x7FFF - 0x8000)) * 127);
+  // if(temp_accX < 0)
+  // {
+  //   accelerometerDataX = 0 - accelerometerDataX;
+  // }
+
+  // if(temp_accY < 0)
+  // {
+  //   temp_accY = 0 - temp_accY;
+  // }
+  // accelerometerDataY = (((temp_accY - (0x8000)) / (0x7FFF - 0x8000)) * 127);
+  // if(temp_accY < 0)
+  // {
+  //   accelerometerDataY = 0 - accelerometerDataY;
+  // }
   
-  if(temp_accZ < 0)
-  {
-    temp_accZ = 0 - temp_accZ;
-  }
-  accelerometerDataZ = (((temp_accZ - (0x8000)) / (0x7FFF - 0x8000)) * 127);
-  if(temp_accZ < 0)
-  {
-    accelerometerDataZ = 0 - accelerometerDataZ;
-  }
+  // if(temp_accZ < 0)
+  // {
+  //   temp_accZ = 0 - temp_accZ;
+  // }
+  // accelerometerDataZ = (((temp_accZ - (0x8000)) / (0x7FFF - 0x8000)) * 127);
+  // if(temp_accZ < 0)
+  // {
+  //   accelerometerDataZ = 0 - accelerometerDataZ;
+  // }
 }
 
 void measureGyroscope() {
   float gx, gy, gz;
   int16_t temp_gyroX, temp_gyroY, temp_gyroZ;
     
-  LSM6DSO_readGyroscope(gx, gy, gz);
-  temp_gyroX = (gx * 100);
-  temp_gyroY = (gy * 100);
-  temp_gyroZ = (gz * 100);
+  LSM6DSO_readGyroscope(temp_gyroX, temp_gyroY, temp_gyroZ);
 
-  if(temp_gyroX < 0)
-  {
-    temp_gyroX = 0 - temp_gyroX;
-  }
-  gyroscopeDataX = (((temp_gyroX - (0x8000)) / (0x7FFF - 0x8000)) * 127);
-  if(temp_gyroX < 0)
-  {
-    gyroscopeDataX = 0 - gyroscopeDataX;
-  }
+  gyroscopeDataX = temp_gyroX;
+  gyroscopeDataY = temp_gyroY;
+  gyroscopeDataZ = temp_gyroZ;
+
+  // temp_gyroX = (gx * 100);
+  // temp_gyroY = (gy * 100);
+  // temp_gyroZ = (gz * 100);
+
+  // if(temp_gyroX < 0)
+  // {
+  //   temp_gyroX = 0 - temp_gyroX;
+  // }
+  // gyroscopeDataX = (((temp_gyroX - (0x8000)) / (0x7FFF - 0x8000)) * 127);
+  // if(temp_gyroX < 0)
+  // {
+  //   gyroscopeDataX = 0 - gyroscopeDataX;
+  // }
   
-  if(temp_gyroY < 0)
-  {
-    temp_gyroY = 0 - temp_gyroY;
-  }
-  gyroscopeDataY = (((temp_gyroY - (0x8000)) / (0x7FFF - 0x8000)) * 127);
-  if(temp_gyroY < 0)
-  {
-    gyroscopeDataY = 0 - gyroscopeDataY;
-  }
+  // if(temp_gyroY < 0)
+  // {
+  //   temp_gyroY = 0 - temp_gyroY;
+  // }
+  // gyroscopeDataY = (((temp_gyroY - (0x8000)) / (0x7FFF - 0x8000)) * 127);
+  // if(temp_gyroY < 0)
+  // {
+  //   gyroscopeDataY = 0 - gyroscopeDataY;
+  // }
 
-  if(temp_gyroZ < 0)
-  {
-    temp_gyroZ = 0 - temp_gyroZ;
-  }
-  gyroscopeDataZ = (((temp_gyroZ - (0x8000)) / (0x7FFF - 0x8000)) * 127);
-  if(temp_gyroZ < 0)
-  {
-    gyroscopeDataZ = 0 - gyroscopeDataZ;
-  }
+  // if(temp_gyroZ < 0)
+  // {
+  //   temp_gyroZ = 0 - temp_gyroZ;
+  // }
+  // gyroscopeDataZ = (((temp_gyroZ - (0x8000)) / (0x7FFF - 0x8000)) * 127);
+  // if(temp_gyroZ < 0)
+  // {
+  //   gyroscopeDataZ = 0 - gyroscopeDataZ;
+  // }
 }
 
 void measureDeviceTemp() {
