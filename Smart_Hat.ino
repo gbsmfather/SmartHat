@@ -456,7 +456,7 @@ void writeRegister(uint8_t deviceAddress, uint8_t registerAddress, uint8_t data)
 }
 
 
-int LSM6DSO_readAcceleration(uint8_t& x, uint8_t& y, uint8_t& z)
+int LSM6DSO_readAcceleration(int8_t& x, int8_t& y, int8_t& z)
 {
   uint8_t address = 0X28;
 
@@ -477,31 +477,15 @@ int LSM6DSO_readAcceleration(uint8_t& x, uint8_t& y, uint8_t& z)
   int16_t ay = (int16_t)(yhg << 8 | ylg);
   int16_t az = (int16_t)(zhg << 8 | zlg);
 
-  x = (uint8_t)(abs(ax) >> 4);
-  y = (uint8_t)(abs(ay) >> 4);
-  z = (uint8_t)(abs(az) >> 4);
-
-
-	// int16_t data[3];
-
-	// if(!LSM6DSO_readRegisters(0X28, (uint8_t*)data, sizeof(data)))
-	// {
-	// 	x = NAN;
-	// 	y = NAN;
-	// 	z = NAN;
-
-	// 	return 0;
-	// }
-
-	// x = data[0] * 4.0 / 32768.0;
-	// y = data[1] * 4.0 / 32768.0;
-	// z = data[2] * 4.0 / 32768.0;
+  x = (int8_t)(ax / 256);
+  y = (int8_t)(ay / 256);
+  z = (int8_t)(az / 256);
 
 	return 1;
 }
 
 
-int LSM6DSO_readGyroscope(float& x, float& y, float& z)
+int LSM6DSO_readGyroscope(int8_t& x, int8_t& y, int8_t& z)
 {
   uint8_t address = 0X22;
 
@@ -522,24 +506,9 @@ int LSM6DSO_readGyroscope(float& x, float& y, float& z)
   int16_t gy = (int16_t)(yhg << 8 | ylg);
   int16_t gz = (int16_t)(zhg << 8 | zlg);
 
-  x = (uint8_t)(abs(gx) >> 4);
-  y = (uint8_t)(abs(gy) >> 4);
-  z = (uint8_t)(abs(gz) >> 4);
-
-	// int16_t data[3];
-
-	// if(!LSM6DSO_readRegisters(0X22, (uint8_t*)data, sizeof(data)))
-	// {
-	// 	x = NAN;
-	// 	y = NAN;
-	// 	z = NAN;
-
-	// 	return 0;
-	// }
-
-	// x = data[0] * 2000.0 / 32768.0;
-	// y = data[1] * 2000.0 / 32768.0;
-	// z = data[2] * 2000.0 / 32768.0;
+  x = (int8_t)(gx / 256);
+  y = (int8_t)(gy / 256);
+  z = (int8_t)(gz / 256);
 
 	return 1;
 }
@@ -557,7 +526,6 @@ int LSM6DSO_readTemperature(int& temperature_deg)
   uint8_t deglg = Wire.read();
   uint8_t deghg = Wire.read();
   
-
   // combine high and low bytes
   int16_t temperature_raw = (int16_t)(deghg << 8 | deglg);
 
@@ -566,72 +534,9 @@ int LSM6DSO_readTemperature(int& temperature_deg)
 	static int const TEMPERATURE_OFFSET_DEG = 25;
 
 	temperature_deg = static_cast<int>((static_cast<float>(temperature_raw) / TEMPERATURE_LSB_per_DEG) + TEMPERATURE_OFFSET_DEG);
-  
-  // x = (uint8_t)(abs(gx) >> 4);
-  // y = (uint8_t)(abs(gy) >> 4);
-  // z = (uint8_t)(abs(gz) >> 4);
-
-	// float temperature_float = 0;
-	// LSM6DSO_readTemperatureFloat(temperature_float);
-
-	// temperature_deg = static_cast<int>(temperature_float);
 
 	return 1;
 }
-
-// int LSM6DSO_readTemperatureFloat(float& temperature_deg)
-// {
-// 	/* Read the raw temperature from the sensor. */
-// 	int16_t temperature_raw = 0;
-
-// 	if(LSM6DSO_readRegisters(0X20, reinterpret_cast<uint8_t*>(&temperature_raw), sizeof(temperature_raw)) != 1)
-// 	{
-// 		return 0;
-// 	}
-
-// 	/* Convert to °C. */
-// 	static int const TEMPERATURE_LSB_per_DEG = 256;
-// 	static int const TEMPERATURE_OFFSET_DEG = 25;
-
-// 	temperature_deg = (static_cast<float>(temperature_raw) / TEMPERATURE_LSB_per_DEG) + TEMPERATURE_OFFSET_DEG;
-
-// 	return 1;
-// }
-
-
-
-
-// int LSM6DSO_readRegisters(uint8_t address, size_t length, int16_t& gx, int16_t& gy, int16_t& gz)
-// {
-// 	Wire.beginTransmission(LSM6DSO32_ADDRESS);
-// 	Wire.write(address);
-// 	Wire.endTransmission();    
-
-// 	// if(Wire.requestFrom(LSM6DSO32_ADDRESS, length) != length)
-// 	// {
-// 	// 	return 0;
-// 	// }
-
-// 	// for(size_t i = 0; i < length; i++)
-// 	// {
-// 	// 	*data++ = Wire.read();
-// 	// }
-
-//   Wire.requestFrom(LSM6DSO32_ADDRESS, (uint8_t)length);
-//   uint8_t xlg = Wire.read();
-//   uint8_t xhg = Wire.read();
-//   uint8_t ylg = Wire.read();
-//   uint8_t yhg = Wire.read();
-//   uint8_t zlg = Wire.read();
-//   uint8_t zhg = Wire.read();
-
-//   // combine high and low bytes
-//   gx = (int16_t)(xhg << 8 | xlg);
-//   gy = (int16_t)(yhg << 8 | ylg);
-//   gz = (int16_t)(zhg << 8 | zlg);
-
-// 	return 1;
-// }
 
 
 void DataMake(void)
@@ -761,7 +666,7 @@ void measureBattery() {
 void measureAcceleration() {
   // 가속도 및 자이로 데이터 읽기
   float x, y, z;
-  int16_t temp_accX, temp_accY, temp_accZ;
+  int8_t temp_accX, temp_accY, temp_accZ;
   
 
   LSM6DSO_readAcceleration(temp_accX, temp_accY, temp_accZ);
@@ -807,7 +712,7 @@ void measureAcceleration() {
 
 void measureGyroscope() {
   float gx, gy, gz;
-  int16_t temp_gyroX, temp_gyroY, temp_gyroZ;
+  int8_t temp_gyroX, temp_gyroY, temp_gyroZ;
     
   LSM6DSO_readGyroscope(temp_gyroX, temp_gyroY, temp_gyroZ);
 
@@ -927,7 +832,7 @@ void setup()
 	delay(100);
 
   // esp_sleep_enable_timer_wakeup(TIME_TO_SLEEP * uS_TO_S_FACTOR);
-
+  
   // esp_deep_sleep_start();
 
 	// Initialize BQ25121A
@@ -1089,7 +994,6 @@ void loop()
         togglePin(ledPin);
       }
     }
-    
 
     if(digitalRead(PG_Pin) == LOW) {
       
