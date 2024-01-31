@@ -72,6 +72,10 @@ uint16_t          addr = 0;
 #define	DATA_FIELD				3
 
 
+#define STATE_CHARGING 0
+#define STATE_TO_RUN 1
+#define STATE_RUNNING 2
+
 
 BLEServer *pServer = NULL;
 BLEService *pService = NULL;
@@ -151,13 +155,16 @@ uint8_t event_timer_flag = 0;
 uint8_t event_hat_flag = 0;
 
 
+#define uS_TO_S_FACTOR 1000000
+#define TIME_TO_SLEEP 5
+
+
 // ISR callback for INT1
 void INT1_fullEvent_cb()
 {
 	//fullFlag = 1;
   fullFlag++;
 }
-
 
 
 void ARDUINO_ISR_ATTR onTimer()
@@ -549,19 +556,19 @@ void DataMake(void)
 
 	length = 11;
 
-    txTest[STX_FIELD] = STX;											// STX					0
-    txTest[LEN_FIELD] = length;											// LEN					1
-    txTest[CODE_FIELD] = 0x21;											// CMD					2
-    txTest[DATA_FIELD] = Thermistor_ADC >> 8;							// Thermistor ADC		3
-    txTest[DATA_FIELD + 1] = Thermistor_ADC;							// Thermistor ADC		4    
-    txTest[DATA_FIELD + 2] = Device_Temp;								// Device Temp			5
-    txTest[DATA_FIELD + 3] = gyroscopeDataX;							// AXIS_X[0]			6
-    txTest[DATA_FIELD + 4] = gyroscopeDataY;							// AXIS_Y[0]			7
-    txTest[DATA_FIELD + 5] = gyroscopeDataZ;							// AXIS_Z[0]			8
-    txTest[DATA_FIELD + 6] = accelerometerDataX;						// ACC_X[0]				9
-    txTest[DATA_FIELD + 7] = accelerometerDataY;						// ACC_Y[0]				10
-    txTest[DATA_FIELD + 8] = accelerometerDataZ;						// ACC_Z[0]				11
-    txTest[DATA_FIELD + 9] = Battery_Data; 							// Battery				12
+  txTest[STX_FIELD] = STX;											// STX					0
+  txTest[LEN_FIELD] = length;											// LEN					1
+  txTest[CODE_FIELD] = 0x21;											// CMD					2
+  txTest[DATA_FIELD] = Thermistor_ADC >> 8;							// Thermistor ADC		3
+  txTest[DATA_FIELD + 1] = Thermistor_ADC;							// Thermistor ADC		4    
+  txTest[DATA_FIELD + 2] = Device_Temp;								// Device Temp			5
+  txTest[DATA_FIELD + 3] = gyroscopeDataX;							// AXIS_X[0]			6
+  txTest[DATA_FIELD + 4] = gyroscopeDataY;							// AXIS_Y[0]			7
+  txTest[DATA_FIELD + 5] = gyroscopeDataZ;							// AXIS_Z[0]			8
+  txTest[DATA_FIELD + 6] = accelerometerDataX;						// ACC_X[0]				9
+  txTest[DATA_FIELD + 7] = accelerometerDataY;						// ACC_Y[0]				10
+  txTest[DATA_FIELD + 8] = accelerometerDataZ;						// ACC_Z[0]				11
+  txTest[DATA_FIELD + 9] = Battery_Data; 							// Battery				12
 
 	for(i = 0; i < (length + 2); i++)
 	{
@@ -606,7 +613,7 @@ void resetBleService() {
 	pService = pServer->createService(SERVICE_UUID);
 
 	// 서비스에 특성 추가
-	pTxCharacteristic = pService->createCharacteristicF
+	pTxCharacteristic = pService->createCharacteristic
 	(
 		CHARACTERISTIC_UUID_TX, BLECharacteristic::PROPERTY_NOTIFY
 	);
@@ -802,13 +809,10 @@ void measureSensors() {
 }
 
 
-#define STATE_CHARGING 0
-#define STATE_TO_RUN 1
-#define STATE_RUNNING 2
-
 void setup()
 {
-	delay(100);
+  Serial.begin(9600);
+	delay(1000);
 	
 	pinMode(PG_Pin, INPUT_PULLUP);	
 	pinMode(SwPin, INPUT_PULLUP);
@@ -817,8 +821,7 @@ void setup()
 	pinMode(PSM_CD_Pin, OUTPUT);
 	pinMode(Buzzer_Pin, OUTPUT);
 	digitalWrite(PSM_CD_Pin, HIGH);
-  
-	Serial.begin(9600);
+  	
 	Wire.begin(SDA_PIN, SCL_PIN); 
 
 	// Interrupt pin settings
@@ -829,6 +832,10 @@ void setup()
 	WiFi.mode(WIFI_OFF);
 	delay(100);
 
+  // esp_sleep_enable_timer_wakeup(TIME_TO_SLEEP * uS_TO_S_FACTOR);
+
+  // esp_deep_sleep_start();
+
 	// Initialize BQ25121A
 	initBQ25121A();
 
@@ -836,7 +843,6 @@ void setup()
 	initlSM6DSO32();
 
 //	initFRAM();
-
 
 	// ESP32의 속도를 80MHz로 설정
 	setCpuFrequencyMhz(80);
@@ -878,24 +884,37 @@ void setup()
 
 void loop()
 {
+  if(event_hat_flag & EVENT_HAT_BLE_CONNECT) {
+    event_hat_flag &= ~EVENT_HAT_BLE_CONNECT;
+
+    deviceConnected = true;
+    timer_10ms = 0;
+    event_timer_flag = 0;
+  }
+
+  else if(event_hat_flag & EVENT_HAT_BLE_DISCONNECT) {
+    event_hat_flag &= ~EVENT_HAT_BLE_DISCONNECT;
+
+    deviceConnected = false;
+
+    Boot_Check = STATE_TO_RUN;
+  }
+
   if (Boot_Check == STATE_CHARGING) { // 충전 상태 
-    if(digitalRead(PG_Pin) == LOW) {
-      digitalWrite(PSM_CD_Pin, LOW);
+    if(event_timer_flag & EVENT_TIMER_1S) {
+      event_timer_flag &= ~EVENT_TIMER_1S;
 
-      if(event_timer_flag & EVENT_TIMER_1S) {
-        event_timer_flag &= ~EVENT_TIMER_1S;
-
-        measureCharging();
-        
-        if(charge_state == 1) { // 충전 중인 상태
-          togglePin(ledPin);
-        }
-        else if(charge_state == 2) { // 완충
-          digitalWrite(ledPin, HIGH);
-        }
+      measureCharging();
+      
+      if(charge_state == 1) { // 충전 중인 상태
+        togglePin(ledPin);
+      }
+      else if(charge_state == 2) { // 완충
+        digitalWrite(ledPin, HIGH);
       }
     }
-    else {
+
+    if(digitalRead(PG_Pin) == HIGH) {
       digitalWrite(PSM_CD_Pin, HIGH); // 충전 해제 
 
       delay(100); // 디바운스를 위한 짧은 지연
@@ -904,10 +923,11 @@ void loop()
       Boot_Check = STATE_TO_RUN;		
     }
   }
-  else if (Boot_Check == STATE_TO_RUN) { // 페어링
+  else if (Boot_Check == STATE_TO_RUN) { // 준비
     digitalWrite(ledPin, LOW);
     timer_10ms = 0;
     event_timer_flag = 0;
+    event_hat_flag = 0;
     fullFlag = 0;
 
     if(!deviceConnected) {
@@ -917,22 +937,66 @@ void loop()
     Boot_Check = STATE_RUNNING;
   }
   else if (Boot_Check == STATE_RUNNING) { // 충전 해제 완료
-    if(event_hat_flag & EVENT_HAT_BLE_CONNECT) {
-      event_hat_flag &= ~EVENT_HAT_BLE_CONNECT;
+    if(digitalRead(SwPin) == LOW) {
+      pushSwPinFlag = 1;
+      pushSwPinCount++;
+      if(pushSwPinCount > 96000) {
+        activateReset();
+      }
+    }
+    else {
+      if(pushSwPinFlag == 1) {
+        pushSwPinFlag = 0;
+        pushSwPinCount = 0;
 
-      deviceConnected = true;
-      timer_10ms = 0;
-      event_timer_flag = 0;
+        if(fullFlag) {
+          fullFlag = 0;
+          digitalWrite(Buzzer_Pin, LOW);
+          Serial.println("Shork Clear");
+        }
+      }
     }
 
-    else if(event_hat_flag & EVENT_HAT_BLE_DISCONNECT) {
-      event_hat_flag &= ~EVENT_HAT_BLE_DISCONNECT;
+    if(fullFlag > 1)
+    {
+      digitalWrite(Buzzer_Pin, HIGH);
+      delay(2);
+      digitalWrite(Buzzer_Pin, LOW);		
+    }
 
-      deviceConnected = false;
+    if(deviceConnected) {
+      if(event_timer_flag & EVENT_TIMER_1S) {
+        event_timer_flag &= ~EVENT_TIMER_1S;
 
-      Boot_Check = STATE_TO_RUN;
+        digitalWrite(ledPin, HIGH);
+        
+        measureSensors();
+
+        DataMake();
+        pTxCharacteristic->setValue(txTest, (txTest[LEN_FIELD] + 3));
+        // Notify를 통해 데이터 전송		
+        pTxCharacteristic->notify();
+        Serial.println("BLE TX DATA");
+        Tx_Busy = 1;
+        Tx_Timer = 10;
+        Tx_Retry++;
+        if(Tx_Retry > 0) {
+          Tx_Retry = 0;
+        }
+        
+        digitalWrite(ledPin, LOW);
+        timer_10ms = 0;
+      }
+    }
+    else {
+      if(event_timer_flag & EVENT_TIMER_300MS) {
+        event_timer_flag &= ~EVENT_TIMER_300MS;
+
+        togglePin(ledPin);
+      }
     }
     
+
     if(digitalRead(PG_Pin) == LOW) {
       
       digitalWrite(PSM_CD_Pin, LOW); // 충전 진행
@@ -947,84 +1011,6 @@ void loop()
 
       Boot_Check = STATE_CHARGING;
     }
-    else {
-      if(digitalRead(SwPin) == LOW) {
-        pushSwPinFlag = 1;
-        pushSwPinCount++;
-        if(pushSwPinCount > 96000) {
-          activateReset();
-        }
-      }
-      else {
-        if(pushSwPinFlag == 1) {
-  //         if(pushSwPinCount > 32000) {
-  //           ble_pair = 1;
-  //           pair_timer = 10;				// 10초
-  // /*
-  //           // advertising 간격 설정 (100ms - 1000ms 범위 내에서 설정 가능)
-  //           pAdvertising->setMinInterval(500);  // 최소 간격: 500ms
-  //           pAdvertising->setMaxInterval(1000); // 최대 간격: 1000ms
-  // */							
-  //           pServer->startAdvertising(); // restart advertising
-            
-  //           Serial.println("BLE Pairing");
-  //         }
-  //         else {
-  //           if(fullFlag) {
-  //             fullFlag = 0;
-  //             digitalWrite(Buzzer_Pin, LOW);
-  //             Serial.println("Shork Clear");
-  //           }
-  //         }
-
-          if(fullFlag) {
-            fullFlag = 0;
-            digitalWrite(Buzzer_Pin, LOW);
-            Serial.println("Shork Clear");
-          }
-
-          pushSwPinFlag = 0;
-          pushSwPinCount = 0;
-        }
-      }
-
-      if(fullFlag > 1)
-      {
-        digitalWrite(Buzzer_Pin, HIGH);
-        delay(2);
-        digitalWrite(Buzzer_Pin, LOW);		
-      }
-
-      if(deviceConnected) {
-        if((timer_10ms % 100) == 0) { 			// 1초
-          digitalWrite(ledPin, HIGH);
-          
-          //measureSensors();
-
-          DataMake();
-          pTxCharacteristic->setValue(txTest, (txTest[LEN_FIELD] + 3));
-          // Notify를 통해 데이터 전송		
-          pTxCharacteristic->notify();
-          Serial.println("BLE TX DATA");
-          Tx_Busy = 1;
-          Tx_Timer = 10;
-          Tx_Retry++;
-          if(Tx_Retry > 0) {
-            Tx_Retry = 0;
-          }
-          
-          digitalWrite(ledPin, LOW);
-          timer_10ms = 0;
-        }
-      }
-      else {
-        if(event_timer_flag & EVENT_TIMER_300MS) {
-          event_timer_flag &= ~EVENT_TIMER_300MS;
-
-          togglePin(ledPin);
-        }
-      }
-    }
   }
   else { // UNKNOWN STATE
   }
@@ -1037,22 +1023,7 @@ void loop()
 		
 
 
-	if(timer_1s_old != timer_1s)
-	{
-//		Serial.println(ble_pair);
-//		Serial.println(pair_timer);		
 	
-		timer_1s_old = timer_1s;
-
-		
-
-
-		// 연결 끊김
-		if(!deviceConnected)
-		{
-			// FRAM 저장하는 부분 구현
-		}
-	}
 
 
 // 	if(((1 == ble_pair) || (2 == ble_pair)) && (0 == pair_timer))
