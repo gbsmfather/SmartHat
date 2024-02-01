@@ -516,7 +516,7 @@ int LSM6DSO_readGyroscope(int8_t& x, int8_t& y, int8_t& z)
 
 int LSM6DSO_readTemperature(int& temperature_deg)
 {
-  uint8_t address = 0X20;
+  uint8_t address = 0X28;
 
   Wire.beginTransmission(LSM6DSO32_ADDRESS);
 	Wire.write(address);
@@ -551,9 +551,9 @@ void DataMake(void)
   txTest[DATA_FIELD] = ThermistorData >> 8;							// Thermistor High Data		3
   txTest[DATA_FIELD + 1] = ThermistorData;							// Thermistor Low Data		4    
   txTest[DATA_FIELD + 2] = Device_Temp;								// Device Temp			5
-  txTest[DATA_FIELD + 3] = abs(gyroscopeDataX-gyroscopeRefX);							// AXIS_X[0]			6
-  txTest[DATA_FIELD + 4] = abs(gyroscopeDataY-gyroscopeRefY);							// AXIS_Y[0]			7
-  txTest[DATA_FIELD + 5] = abs(gyroscopeDataZ-gyroscopeRefZ);							// AXIS_Z[0]			8
+  txTest[DATA_FIELD + 3] = gyroscopeDataX; // gyroscopeDataX; // abs(gyroscopeDataX-gyroscopeRefX);							// AXIS_X[0]			6
+  txTest[DATA_FIELD + 4] = gyroscopeDataY; // gyroscopeDataY; // abs(gyroscopeDataY-gyroscopeRefY);							// AXIS_Y[0]			7
+  txTest[DATA_FIELD + 5] = gyroscopeDataZ; // gyroscopeDataZ; // abs(gyroscopeDataZ-gyroscopeRefZ);							// AXIS_Z[0]			8
   txTest[DATA_FIELD + 6] = accelerometerDataX;						// ACC_X[0]				9
   txTest[DATA_FIELD + 7] = accelerometerDataY;						// ACC_Y[0]				10
   txTest[DATA_FIELD + 8] = accelerometerDataZ;						// ACC_Z[0]				11
@@ -592,7 +592,7 @@ void togglePin(int pin)
 
 void resetBleService() {
   // BLE 초기화
-	BLEDevice::init("SMARTHAT 00D");
+	BLEDevice::init("SMART HAT");
 
 	// BLE 서버 생성 및 이벤트 핸들러 등록
 	pServer = BLEDevice::createServer();
@@ -884,74 +884,73 @@ void loop()
       
       digitalWrite(PSM_CD_Pin, LOW); // 충전 진행
 
-      if(deviceConnected) {
-        pServer->disconnect(connectedId);
-        stopBleAdvertising();
-      }      
+      // Boot_Check = STATE_CHARGING;
 
-      timer_10ms = 0;
-      event_timer_flag = 0;
+      // if(deviceConnected) {
+      //   pServer->disconnect(connectedId);
+      //   stopBleAdvertising();
+      // }      
 
-      Boot_Check = STATE_CHARGING;
+      // timer_10ms = 0;
+      // event_timer_flag = 0;
+    }
+    
+    if(digitalRead(SwPin) == LOW) {
+      pushSwPinFlag = 1;
+      pushSwPinCount++;
+      if(pushSwPinCount > 96000) {
+        activateReset();
+      }
     }
     else {
-      if(digitalRead(SwPin) == LOW) {
-        pushSwPinFlag = 1;
-        pushSwPinCount++;
-        if(pushSwPinCount > 96000) {
-          activateReset();
+      if(pushSwPinFlag == 1) {
+        pushSwPinFlag = 0;
+        pushSwPinCount = 0;
+
+        if(fullFlag) {
+          fullFlag = 0;
+          digitalWrite(Buzzer_Pin, LOW);
+          Serial.println("Shork Clear");
         }
       }
-      else {
-        if(pushSwPinFlag == 1) {
-          pushSwPinFlag = 0;
-          pushSwPinCount = 0;
+    }
 
-          if(fullFlag) {
-            fullFlag = 0;
-            digitalWrite(Buzzer_Pin, LOW);
-            Serial.println("Shork Clear");
-          }
+    if(fullFlag > 1)
+    {
+      digitalWrite(Buzzer_Pin, HIGH);
+      delay(2);
+      digitalWrite(Buzzer_Pin, LOW);		
+    }
+
+    if(deviceConnected) {
+      if(event_timer_flag & EVENT_TIMER_1S) {
+        event_timer_flag &= ~EVENT_TIMER_1S;
+
+        digitalWrite(ledPin, HIGH);
+        
+        measureSensors();
+
+        DataMake();
+        pTxCharacteristic->setValue(txTest, (txTest[LEN_FIELD] + 3));
+        // Notify를 통해 데이터 전송		
+        pTxCharacteristic->notify();
+        Serial.println("BLE TX DATA");
+        Tx_Busy = 1;
+        Tx_Timer = 10;
+        Tx_Retry++;
+        if(Tx_Retry > 0) {
+          Tx_Retry = 0;
         }
+        
+        digitalWrite(ledPin, LOW);
+        timer_10ms = 0;
       }
+    }
+    else {
+      if(event_timer_flag & EVENT_TIMER_300MS) {
+        event_timer_flag &= ~EVENT_TIMER_300MS;
 
-      if(fullFlag > 1)
-      {
-        digitalWrite(Buzzer_Pin, HIGH);
-        delay(2);
-        digitalWrite(Buzzer_Pin, LOW);		
-      }
-
-      if(deviceConnected) {
-        if(event_timer_flag & EVENT_TIMER_1S) {
-          event_timer_flag &= ~EVENT_TIMER_1S;
-
-          digitalWrite(ledPin, HIGH);
-          
-          measureSensors();
-
-          DataMake();
-          pTxCharacteristic->setValue(txTest, (txTest[LEN_FIELD] + 3));
-          // Notify를 통해 데이터 전송		
-          pTxCharacteristic->notify();
-          Serial.println("BLE TX DATA");
-          Tx_Busy = 1;
-          Tx_Timer = 10;
-          Tx_Retry++;
-          if(Tx_Retry > 0) {
-            Tx_Retry = 0;
-          }
-          
-          digitalWrite(ledPin, LOW);
-          timer_10ms = 0;
-        }
-      }
-      else {
-        if(event_timer_flag & EVENT_TIMER_300MS) {
-          event_timer_flag &= ~EVENT_TIMER_300MS;
-
-          togglePin(ledPin);
-        }
+        togglePin(ledPin);
       }
     }
   }
