@@ -592,7 +592,7 @@ void togglePin(int pin)
 
 void resetBleService() {
   // BLE 초기화
-	BLEDevice::init("SMARTHAT 00A");
+	BLEDevice::init("SMARTHAT 00D");
 
 	// BLE 서버 생성 및 이벤트 핸들러 등록
 	pServer = BLEDevice::createServer();
@@ -936,65 +936,6 @@ void loop()
     Boot_Check = STATE_RUNNING;
   }
   else if (Boot_Check == STATE_RUNNING) { // 충전 해제 완료
-    if(digitalRead(SwPin) == LOW) {
-      pushSwPinFlag = 1;
-      pushSwPinCount++;
-      if(pushSwPinCount > 96000) {
-        activateReset();
-      }
-    }
-    else {
-      if(pushSwPinFlag == 1) {
-        pushSwPinFlag = 0;
-        pushSwPinCount = 0;
-
-        if(fullFlag) {
-          fullFlag = 0;
-          digitalWrite(Buzzer_Pin, LOW);
-          Serial.println("Shork Clear");
-        }
-      }
-    }
-
-    if(fullFlag > 1)
-    {
-      digitalWrite(Buzzer_Pin, HIGH);
-      delay(2);
-      digitalWrite(Buzzer_Pin, LOW);		
-    }
-
-    if(deviceConnected) {
-      if(event_timer_flag & EVENT_TIMER_1S) {
-        event_timer_flag &= ~EVENT_TIMER_1S;
-
-        digitalWrite(ledPin, HIGH);
-        
-        measureSensors();
-
-        DataMake();
-        pTxCharacteristic->setValue(txTest, (txTest[LEN_FIELD] + 3));
-        // Notify를 통해 데이터 전송		
-        pTxCharacteristic->notify();
-        Serial.println("BLE TX DATA");
-        Tx_Busy = 1;
-        Tx_Timer = 10;
-        Tx_Retry++;
-        if(Tx_Retry > 0) {
-          Tx_Retry = 0;
-        }
-        
-        digitalWrite(ledPin, LOW);
-        timer_10ms = 0;
-      }
-    }
-    else {
-      if(event_timer_flag & EVENT_TIMER_300MS) {
-        event_timer_flag &= ~EVENT_TIMER_300MS;
-
-        togglePin(ledPin);
-      }
-    }
-
     if(digitalRead(PG_Pin) == LOW) {
       
       digitalWrite(PSM_CD_Pin, LOW); // 충전 진행
@@ -1008,6 +949,66 @@ void loop()
       event_timer_flag = 0;
 
       Boot_Check = STATE_CHARGING;
+    }
+    else {
+      if(digitalRead(SwPin) == LOW) {
+        pushSwPinFlag = 1;
+        pushSwPinCount++;
+        if(pushSwPinCount > 96000) {
+          activateReset();
+        }
+      }
+      else {
+        if(pushSwPinFlag == 1) {
+          pushSwPinFlag = 0;
+          pushSwPinCount = 0;
+
+          if(fullFlag) {
+            fullFlag = 0;
+            digitalWrite(Buzzer_Pin, LOW);
+            Serial.println("Shork Clear");
+          }
+        }
+      }
+
+      if(fullFlag > 1)
+      {
+        digitalWrite(Buzzer_Pin, HIGH);
+        delay(2);
+        digitalWrite(Buzzer_Pin, LOW);		
+      }
+
+      if(deviceConnected) {
+        if(event_timer_flag & EVENT_TIMER_1S) {
+          event_timer_flag &= ~EVENT_TIMER_1S;
+
+          digitalWrite(ledPin, HIGH);
+          
+          measureSensors();
+
+          DataMake();
+          pTxCharacteristic->setValue(txTest, (txTest[LEN_FIELD] + 3));
+          // Notify를 통해 데이터 전송		
+          pTxCharacteristic->notify();
+          Serial.println("BLE TX DATA");
+          Tx_Busy = 1;
+          Tx_Timer = 10;
+          Tx_Retry++;
+          if(Tx_Retry > 0) {
+            Tx_Retry = 0;
+          }
+          
+          digitalWrite(ledPin, LOW);
+          timer_10ms = 0;
+        }
+      }
+      else {
+        if(event_timer_flag & EVENT_TIMER_300MS) {
+          event_timer_flag &= ~EVENT_TIMER_300MS;
+
+          togglePin(ledPin);
+        }
+      }
     }
   }
   else { // UNKNOWN STATE
