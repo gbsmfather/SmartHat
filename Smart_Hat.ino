@@ -119,6 +119,7 @@ int ThermistorValue = 0; 			       // 아날로그 값 저장 변수
 
 int8_t accelerometerDataX, accelerometerDataY, accelerometerDataZ;
 int8_t gyroscopeDataX, gyroscopeDataY, gyroscopeDataZ;
+int8_t gyroscopeRefX, gyroscopeRefY, gyroscopeRefZ;
 
 
 hw_timer_t * timer = NULL;
@@ -547,12 +548,12 @@ void DataMake(void)
   txTest[STX_FIELD] = STX;											// STX					0
   txTest[LEN_FIELD] = length;											// LEN					1
   txTest[CODE_FIELD] = 0x21;											// CMD					2
-  txTest[DATA_FIELD] = ThermistorData >> 8;							// Thermistor ADC		3
-  txTest[DATA_FIELD + 1] = ThermistorData;							// Thermistor ADC		4    
+  txTest[DATA_FIELD] = ThermistorData >> 8;							// Thermistor High Data		3
+  txTest[DATA_FIELD + 1] = ThermistorData;							// Thermistor Low Data		4    
   txTest[DATA_FIELD + 2] = Device_Temp;								// Device Temp			5
-  txTest[DATA_FIELD + 3] = gyroscopeDataX;							// AXIS_X[0]			6
-  txTest[DATA_FIELD + 4] = gyroscopeDataY;							// AXIS_Y[0]			7
-  txTest[DATA_FIELD + 5] = gyroscopeDataZ;							// AXIS_Z[0]			8
+  txTest[DATA_FIELD + 3] = abs(gyroscopeDataX-gyroscopeRefX);							// AXIS_X[0]			6
+  txTest[DATA_FIELD + 4] = abs(gyroscopeDataY-gyroscopeRefY);							// AXIS_Y[0]			7
+  txTest[DATA_FIELD + 5] = abs(gyroscopeDataZ-gyroscopeRefZ);							// AXIS_Z[0]			8
   txTest[DATA_FIELD + 6] = accelerometerDataX;						// ACC_X[0]				9
   txTest[DATA_FIELD + 7] = accelerometerDataY;						// ACC_Y[0]				10
   txTest[DATA_FIELD + 8] = accelerometerDataZ;						// ACC_Z[0]				11
@@ -826,6 +827,12 @@ void loop()
     deviceConnected = true;
     timer_10ms = 0;
     event_timer_flag = 0;
+
+    measureGyroscope();
+
+    gyroscopeRefX = gyroscopeDataX;
+    gyroscopeRefY = gyroscopeDataY;
+    gyroscopeRefZ = gyroscopeDataZ;
   }
 
   else if(event_hat_flag & EVENT_HAT_BLE_DISCONNECT) {
