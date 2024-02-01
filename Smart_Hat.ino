@@ -136,7 +136,8 @@ volatile uint8_t fullFlag = 0; // FIFO full flag
 uint8_t pushSwPinFlag = 0;
 uint32_t pushSwPinCount = 0;
 
-
+uint16_t accelRange = 16;
+uint16_t gyroRange = 2000;
 
 #define EVENT_TIMER_5S 0x80
 #define EVENT_TIMER_3S 0x40
@@ -456,7 +457,7 @@ void writeRegister(uint8_t deviceAddress, uint8_t registerAddress, uint8_t data)
 }
 
 
-int LSM6DSO_readAcceleration(int8_t& x, int8_t& y, int8_t& z)
+int LSM6DSO_readAcceleration(int16_t& x, int16_t& y, int16_t& z)
 {
   uint8_t address = 0X28;
 
@@ -477,15 +478,19 @@ int LSM6DSO_readAcceleration(int8_t& x, int8_t& y, int8_t& z)
   int16_t ay = (int16_t)(yhg << 8 | ylg);
   int16_t az = (int16_t)(zhg << 8 | zlg);
 
-  x = (int8_t)(ax / 256);
-  y = (int8_t)(ay / 256);
-  z = (int8_t)(az / 256);
+  x = ax;
+  y = ay;
+  z = az;
+
+  // x = (int8_t)(ax / 256);
+  // y = (int8_t)(ay / 256);
+  // z = (int8_t)(az / 256);
 
 	return 1;
 }
 
 
-int LSM6DSO_readGyroscope(int8_t& x, int8_t& y, int8_t& z)
+int LSM6DSO_readGyroscope(int16_t& x, int16_t& y, int16_t& z)
 {
   uint8_t address = 0X22;
 
@@ -506,13 +511,33 @@ int LSM6DSO_readGyroscope(int8_t& x, int8_t& y, int8_t& z)
   int16_t gy = (int16_t)(yhg << 8 | ylg);
   int16_t gz = (int16_t)(zhg << 8 | zlg);
 
-  x = (int8_t)(gx / 256);
-  y = (int8_t)(gy / 256);
-  z = (int8_t)(gz / 256);
+  x = gx;
+  y = gy;
+  z = gz;
+
+  // x = (int8_t)(gx / 256);
+  // y = (int8_t)(gy / 256);
+  // z = (int8_t)(gz / 256);
 
 	return 1;
 }
 
+float calcAccel( int16_t input )
+{
+	float output = (float)input * 0.061 * (accelRange >> 1) / 1000;
+	return output;
+}
+
+float calcGyro( int16_t input )
+{
+	uint8_t gyroRangeDivisor = gyroRange / 125;
+	if ( gyroRange == 245 ) {
+		gyroRangeDivisor = 2;
+	}
+
+	float output = (float)input * 4.375 * (gyroRangeDivisor) / 1000;
+	return output;
+}
 
 int LSM6DSO_readTemperature(int& temperature_deg)
 {
@@ -666,25 +691,25 @@ void measureBattery() {
 void measureAcceleration() {
   // 가속도 및 자이로 데이터 읽기
   float x, y, z;
-  int8_t temp_accX, temp_accY, temp_accZ;
+  int16_t temp_accX, temp_accY, temp_accZ;
   
 
   LSM6DSO_readAcceleration(temp_accX, temp_accY, temp_accZ);
 
-  accelerometerDataX = temp_accX;
-  accelerometerDataY = temp_accY;
-  accelerometerDataZ = temp_accZ;
+  accelerometerDataX = (int8_t) (calcAccel(temp_accX) + 0.5) * 30;
+  accelerometerDataY = (int8_t) (calcAccel(temp_accY) + 0.5) * 30;
+  accelerometerDataZ = (int8_t) (calcAccel(temp_accZ) + 0.5) * 30;
 }
 
 void measureGyroscope() {
   float gx, gy, gz;
-  int8_t temp_gyroX, temp_gyroY, temp_gyroZ;
+  int16_t temp_gyroX, temp_gyroY, temp_gyroZ;
     
   LSM6DSO_readGyroscope(temp_gyroX, temp_gyroY, temp_gyroZ);
 
-  gyroscopeDataX = temp_gyroX;
-  gyroscopeDataY = temp_gyroY;
-  gyroscopeDataZ = temp_gyroZ;
+  gyroscopeDataX = (int8_t) (calcGyro(temp_gyroX) / 2293.3 * 255);
+  gyroscopeDataY = (int8_t) (calcGyro(temp_gyroY) / 2293.3 * 255);
+  gyroscopeDataZ = (int8_t) (calcGyro(temp_gyroZ) / 2293.3 * 255);
 }
 
 void measureDeviceTemp() {
