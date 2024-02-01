@@ -90,6 +90,7 @@ uint8_t txTest[20];
 
 uint8_t Battery_Data, Device_Temp;
 uint16_t Thermistor_ADC;
+int16_t ThermistorData;
 
 
 uint8_t Sw_cnt = 0;
@@ -372,8 +373,6 @@ void initlSM6DSO32()
 	temp = temp | 0x40;
 	writeRegister(LSM6DSO32_ADDRESS, 0x5E, temp);	
 
-
-
 //	writeRegister(LSM6DSO32_ADDRESS, 0x0D, 0x0B);
 
 	Serial.println("LSM6DSO32 Initialized");
@@ -548,8 +547,8 @@ void DataMake(void)
   txTest[STX_FIELD] = STX;											// STX					0
   txTest[LEN_FIELD] = length;											// LEN					1
   txTest[CODE_FIELD] = 0x21;											// CMD					2
-  txTest[DATA_FIELD] = Thermistor_ADC >> 8;							// Thermistor ADC		3
-  txTest[DATA_FIELD + 1] = Thermistor_ADC;							// Thermistor ADC		4    
+  txTest[DATA_FIELD] = ThermistorData >> 8;							// Thermistor ADC		3
+  txTest[DATA_FIELD + 1] = ThermistorData;							// Thermistor ADC		4    
   txTest[DATA_FIELD + 2] = Device_Temp;								// Device Temp			5
   txTest[DATA_FIELD + 3] = gyroscopeDataX;							// AXIS_X[0]			6
   txTest[DATA_FIELD + 4] = gyroscopeDataY;							// AXIS_Y[0]			7
@@ -674,40 +673,6 @@ void measureAcceleration() {
   accelerometerDataX = temp_accX;
   accelerometerDataY = temp_accY;
   accelerometerDataZ = temp_accZ;
-
-  // temp_accX = (x * 100);
-  // temp_accY = (y * 100);
-  // temp_accZ = (z * 100);
-
-  // if(temp_accX < 0)
-  // {
-  //   temp_accX = 0 - temp_accX;
-  // }
-  // accelerometerDataX = (((temp_accX - (0x8000)) / (0x7FFF - 0x8000)) * 127);
-  // if(temp_accX < 0)
-  // {
-  //   accelerometerDataX = 0 - accelerometerDataX;
-  // }
-
-  // if(temp_accY < 0)
-  // {
-  //   temp_accY = 0 - temp_accY;
-  // }
-  // accelerometerDataY = (((temp_accY - (0x8000)) / (0x7FFF - 0x8000)) * 127);
-  // if(temp_accY < 0)
-  // {
-  //   accelerometerDataY = 0 - accelerometerDataY;
-  // }
-  
-  // if(temp_accZ < 0)
-  // {
-  //   temp_accZ = 0 - temp_accZ;
-  // }
-  // accelerometerDataZ = (((temp_accZ - (0x8000)) / (0x7FFF - 0x8000)) * 127);
-  // if(temp_accZ < 0)
-  // {
-  //   accelerometerDataZ = 0 - accelerometerDataZ;
-  // }
 }
 
 void measureGyroscope() {
@@ -719,46 +684,21 @@ void measureGyroscope() {
   gyroscopeDataX = temp_gyroX;
   gyroscopeDataY = temp_gyroY;
   gyroscopeDataZ = temp_gyroZ;
-
-  // temp_gyroX = (gx * 100);
-  // temp_gyroY = (gy * 100);
-  // temp_gyroZ = (gz * 100);
-
-  // if(temp_gyroX < 0)
-  // {
-  //   temp_gyroX = 0 - temp_gyroX;
-  // }
-  // gyroscopeDataX = (((temp_gyroX - (0x8000)) / (0x7FFF - 0x8000)) * 127);
-  // if(temp_gyroX < 0)
-  // {
-  //   gyroscopeDataX = 0 - gyroscopeDataX;
-  // }
-  
-  // if(temp_gyroY < 0)
-  // {
-  //   temp_gyroY = 0 - temp_gyroY;
-  // }
-  // gyroscopeDataY = (((temp_gyroY - (0x8000)) / (0x7FFF - 0x8000)) * 127);
-  // if(temp_gyroY < 0)
-  // {
-  //   gyroscopeDataY = 0 - gyroscopeDataY;
-  // }
-
-  // if(temp_gyroZ < 0)
-  // {
-  //   temp_gyroZ = 0 - temp_gyroZ;
-  // }
-  // gyroscopeDataZ = (((temp_gyroZ - (0x8000)) / (0x7FFF - 0x8000)) * 127);
-  // if(temp_gyroZ < 0)
-  // {
-  //   gyroscopeDataZ = 0 - gyroscopeDataZ;
-  // }
 }
 
 void measureDeviceTemp() {
   int temperature_int = 0;
   LSM6DSO_readTemperature(temperature_int);
   Device_Temp = temperature_int;
+}
+
+void measureThermistor() {
+  // 아날로그 값을 읽어옴
+  Thermistor_ADC = analogRead(thermistorPin);
+//		Serial.print("ADC Value: ");
+//		Serial.println(Thermistor_ADC);
+
+  ThermistorData = (int16_t) ((0.03012 * Thermistor_ADC - 36.6717) * 10);
 }
 
 void measureCharging() {
@@ -799,10 +739,7 @@ void measureSensors() {
 //		Serial.println(" °C");
 //		delay(10);		
 
-  // 아날로그 값을 읽어옴
-  Thermistor_ADC = analogRead(thermistorPin);
-//		Serial.print("ADC Value: ");
-//		Serial.println(Thermistor_ADC);
+  measureThermistor();
 
   measureCharging();
 }
