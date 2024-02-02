@@ -918,6 +918,19 @@ void loop()
 
       // timer_10ms = 0;
       // event_timer_flag = 0;
+
+      if(event_timer_flag & EVENT_TIMER_1S) {
+        event_timer_flag &= ~EVENT_TIMER_1S;
+
+        measureCharging();
+        
+        // if(charge_state == 1) { // 충전 중인 상태
+        //   togglePin(ledPin);
+        // }
+        // else if(charge_state == 2) { // 완충
+        //   digitalWrite(ledPin, HIGH);
+        // }
+      }
     }
     
     if(digitalRead(SwPin) == LOW) {
@@ -969,6 +982,12 @@ void loop()
         
         digitalWrite(ledPin, LOW);
         timer_10ms = 0;
+
+        if(digitalRead(PG_Pin) == LOW) {
+          if(charge_state == 2) { // 완충
+            digitalWrite(ledPin, HIGH);
+          }
+        }
       }
     }
     else {
@@ -976,6 +995,12 @@ void loop()
         event_timer_flag &= ~EVENT_TIMER_300MS;
 
         togglePin(ledPin);
+
+        if(digitalRead(PG_Pin) == LOW) {
+          if(charge_state == 2) { // 완충
+            digitalWrite(ledPin, HIGH);
+          }
+        }
       }
     }
   }
