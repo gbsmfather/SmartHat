@@ -932,6 +932,9 @@ void loop()
       //   // }
       // }
     }
+    else {
+      digitalWrite(PSM_CD_Pin, HIGH); // 충전 해제 
+    }
     
     if(digitalRead(SwPin) == LOW) {
       pushSwPinFlag = 1;
