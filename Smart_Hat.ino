@@ -919,18 +919,18 @@ void loop()
       // timer_10ms = 0;
       // event_timer_flag = 0;
 
-      if(event_timer_flag & EVENT_TIMER_1S) {
-        event_timer_flag &= ~EVENT_TIMER_1S;
+      // if(event_timer_flag & EVENT_TIMER_1S) {
+      //   event_timer_flag &= ~EVENT_TIMER_1S;
 
-        measureCharging();
+      //   measureCharging();
         
-        // if(charge_state == 1) { // 충전 중인 상태
-        //   togglePin(ledPin);
-        // }
-        // else if(charge_state == 2) { // 완충
-        //   digitalWrite(ledPin, HIGH);
-        // }
-      }
+      //   // if(charge_state == 1) { // 충전 중인 상태
+      //   //   togglePin(ledPin);
+      //   // }
+      //   // else if(charge_state == 2) { // 완충
+      //   //   digitalWrite(ledPin, HIGH);
+      //   // }
+      // }
     }
     
     if(digitalRead(SwPin) == LOW) {
@@ -991,6 +991,12 @@ void loop()
       }
     }
     else {
+      if(event_timer_flag & EVENT_TIMER_1S) {
+        event_timer_flag &= ~EVENT_TIMER_1S;
+
+        measureCharging();
+      }
+
       if(event_timer_flag & EVENT_TIMER_300MS) {
         event_timer_flag &= ~EVENT_TIMER_300MS;
 
