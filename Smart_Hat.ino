@@ -76,6 +76,9 @@ uint16_t          addr = 0;
 #define STATE_TO_RUN 1
 #define STATE_RUNNING 2
 
+#define MAX_COUNT_MEASURE 3
+
+#define SENSIBILITY 15 // 0 ~ 31
 
 BLEServer *pServer = NULL;
 BLEService *pService = NULL;
@@ -146,7 +149,7 @@ uint16_t gyroRange = 2000;
 #define EVENT_TIMER_500MS 0x08
 #define EVENT_TIMER_300MS 0x04
 #define EVENT_TIMER_200MS 0x02
-#define EVENT_TIMER_100MS 0x01
+#define EVENT_TIMER_50MS 0x01
 
 
 uint8_t event_timer_flag = 0;
@@ -182,9 +185,9 @@ void ARDUINO_ISR_ATTR onTimer()
 	xSemaphoreGiveFromISR(timerSemaphore, NULL);
 	// It is safe to use digitalRead/Write here if you want to toggle an output
 
-  if((timer_10ms % 10) == 0) 			// 100밀리초
+  if((timer_10ms % 5) == 0) 			// 100밀리초
   {
-    event_timer_flag |= EVENT_TIMER_100MS;
+    event_timer_flag |= EVENT_TIMER_50MS;
   }
 
   if((timer_10ms % 20) == 0) 			// 200밀리초
@@ -347,6 +350,7 @@ void initBQ25121A()
 	Serial.println("BQ25121A Initialized");
 }
 
+
 void initlSM6DSO32()
 {
 	// LSM6DSO32 초기화 및 동작 모드 설정
@@ -356,15 +360,15 @@ void initlSM6DSO32()
 	uint8_t temp;
 
 	temp = readRegister(LSM6DSO32_ADDRESS, 0x57);
-	temp = temp | 0x0F;
+	temp = temp | SENSIBILITY;
 	writeRegister(LSM6DSO32_ADDRESS, 0x57, temp);
 
 	temp = readRegister(LSM6DSO32_ADDRESS, 0x58);
-	temp = temp | 0x8F;
+	temp = temp | ((0x80) | SENSIBILITY);
 	writeRegister(LSM6DSO32_ADDRESS, 0x58, temp);
 
 	temp = readRegister(LSM6DSO32_ADDRESS, 0x59);
-	temp = temp | 0x0F;
+	temp = temp | SENSIBILITY;
 	writeRegister(LSM6DSO32_ADDRESS, 0x59, temp);
 
 	temp = readRegister(LSM6DSO32_ADDRESS, 0x56);
@@ -576,12 +580,12 @@ void DataMake(void)
   txTest[DATA_FIELD] = ThermistorData >> 8;							// Thermistor High Data		3
   txTest[DATA_FIELD + 1] = ThermistorData;							// Thermistor Low Data		4    
   txTest[DATA_FIELD + 2] = Device_Temp;								// Device Temp			5
-  txTest[DATA_FIELD + 3] = gyroscopeDataX; // gyroscopeDataX; // abs(gyroscopeDataX-gyroscopeRefX);							// AXIS_X[0]			6
-  txTest[DATA_FIELD + 4] = gyroscopeDataY; // gyroscopeDataY; // abs(gyroscopeDataY-gyroscopeRefY);							// AXIS_Y[0]			7
-  txTest[DATA_FIELD + 5] = gyroscopeDataZ; // gyroscopeDataZ; // abs(gyroscopeDataZ-gyroscopeRefZ);							// AXIS_Z[0]			8
-  txTest[DATA_FIELD + 6] = accelerometerDataX;						// ACC_X[0]				9
-  txTest[DATA_FIELD + 7] = accelerometerDataY;						// ACC_Y[0]				10
-  txTest[DATA_FIELD + 8] = accelerometerDataZ;						// ACC_Z[0]				11
+  txTest[DATA_FIELD + 3] = accelerometerDataX;						// ACC_X[0]				6
+  txTest[DATA_FIELD + 4] = accelerometerDataY;						// ACC_Y[0]				7
+  txTest[DATA_FIELD + 5] = accelerometerDataZ;						// ACC_Z[0]				8
+  txTest[DATA_FIELD + 6] = gyroscopeDataX; // gyroscopeDataX; // abs(gyroscopeDataX-gyroscopeRefX);							// AXIS_X[0]			9
+  txTest[DATA_FIELD + 7] = gyroscopeDataY; // gyroscopeDataY; // abs(gyroscopeDataY-gyroscopeRefY);							// AXIS_Y[0]			10
+  txTest[DATA_FIELD + 8] = gyroscopeDataZ; // gyroscopeDataZ; // abs(gyroscopeDataZ-gyroscopeRefZ);							// AXIS_Z[0]			11
   txTest[DATA_FIELD + 9] = Battery_Data; 							// Battery				12
 
 	for(i = 0; i < (length + 2); i++)
@@ -696,20 +700,29 @@ void measureAcceleration() {
 
   LSM6DSO_readAcceleration(temp_accX, temp_accY, temp_accZ);
 
-  accelerometerDataX = (int8_t) (calcAccel(temp_accX) + 0.5) * 30;
-  accelerometerDataY = (int8_t) (calcAccel(temp_accY) + 0.5) * 30;
-  accelerometerDataZ = (int8_t) (calcAccel(temp_accZ) + 0.5) * 30;
+  int8_t _accDataX = (int8_t) (calcAccel(temp_accX) + 0.5) * 30;
+  int8_t _accDataY = (int8_t) (calcAccel(temp_accY) + 0.5) * 30;
+  int8_t _accDataZ = (int8_t) (calcAccel(temp_accZ) + 0.5) * 30;
+
+  accelerometerDataX = (accelerometerDataX * (MAX_COUNT_MEASURE-1) + _accDataX) / MAX_COUNT_MEASURE;
+  accelerometerDataY = (accelerometerDataY * (MAX_COUNT_MEASURE-1) + _accDataY) / MAX_COUNT_MEASURE;
+  accelerometerDataZ = (accelerometerDataZ * (MAX_COUNT_MEASURE-1) + _accDataZ) / MAX_COUNT_MEASURE;
 }
 
 void measureGyroscope() {
   float gx, gy, gz;
   int16_t temp_gyroX, temp_gyroY, temp_gyroZ;
-    
+  int8_t calc_gyroX, calc_gyroY, calc_gyroZ;
+
   LSM6DSO_readGyroscope(temp_gyroX, temp_gyroY, temp_gyroZ);
 
-  gyroscopeDataX = (int8_t) (calcGyro(temp_gyroX) / 2293.3 * 255);
-  gyroscopeDataY = (int8_t) (calcGyro(temp_gyroY) / 2293.3 * 255);
-  gyroscopeDataZ = (int8_t) (calcGyro(temp_gyroZ) / 2293.3 * 255);
+  int8_t _calc_gyroX = (int8_t) (calcGyro(temp_gyroX) / 2293.3 * 255);
+  int8_t _calc_gyroY = (int8_t) (calcGyro(temp_gyroY) / 2293.3 * 255);
+  int8_t _calc_gyroZ = (int8_t) (calcGyro(temp_gyroZ) / 2293.3 * 255);
+
+  gyroscopeDataX = (gyroscopeDataX * (MAX_COUNT_MEASURE-1) + _calc_gyroX) / MAX_COUNT_MEASURE;
+  gyroscopeDataY = (gyroscopeDataY * (MAX_COUNT_MEASURE-1) + _calc_gyroY) / MAX_COUNT_MEASURE;
+  gyroscopeDataZ = (gyroscopeDataZ * (MAX_COUNT_MEASURE-1) + _calc_gyroZ) / MAX_COUNT_MEASURE;
 }
 
 void measureDeviceTemp() {
@@ -724,7 +737,7 @@ void measureThermistor() {
 //		Serial.print("ADC Value: ");
 //		Serial.println(Thermistor_ADC);
 
-  ThermistorData = (int16_t) ((0.03012 * Thermistor_ADC - 36.6717) * 10);
+  ThermistorData = (int16_t) ((0.03012 * Thermistor_ADC - 30.6717) * 10);
 }
 
 void measureCharging() {
@@ -755,9 +768,9 @@ void measureSensors() {
 //		Serial.println(fullFlag);
 //		fullFlag = 0;
 
-  measureAcceleration();
+  //measureAcceleration();
 
-  measureGyroscope();
+  // measureGyroscope();
 
   measureDeviceTemp();
 
@@ -898,6 +911,14 @@ void loop()
     event_hat_flag = 0;
     fullFlag = 0;
 
+    accelerometerDataX = 0;
+    accelerometerDataY = 0;
+    accelerometerDataZ = 0;
+
+    gyroscopeDataX = 0;
+    gyroscopeDataY = 0;
+    gyroscopeDataZ = 0;
+
     if(!deviceConnected) {
       startBleAdvertising();
     }
@@ -956,7 +977,7 @@ void loop()
       }
     }
 
-    if(fullFlag > 1)
+    if(fullFlag)
     {
       digitalWrite(Buzzer_Pin, HIGH);
       delay(2);
@@ -964,9 +985,16 @@ void loop()
     }
 
     if(deviceConnected) {
+      if(event_timer_flag & EVENT_TIMER_50MS) {
+        event_timer_flag &= ~EVENT_TIMER_50MS;
+
+        measureAcceleration();
+        measureGyroscope();
+      }
+
       if(event_timer_flag & EVENT_TIMER_1S) {
         event_timer_flag &= ~EVENT_TIMER_1S;
-
+        
         digitalWrite(ledPin, HIGH);
         
         measureSensors();
@@ -1183,5 +1211,3 @@ void loop()
 // 		}
 // 	}
 }
-
-
