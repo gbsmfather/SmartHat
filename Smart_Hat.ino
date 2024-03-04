@@ -333,15 +333,15 @@ void initBQ25121A()
 	writeRegister(BQ25121A_I2C_ADDRESS, 0x00, 0x01);
 	writeRegister(BQ25121A_I2C_ADDRESS, 0x01, 0x00);
 	writeRegister(BQ25121A_I2C_ADDRESS, 0x02, 0x0A);			// 0x88
-	writeRegister(BQ25121A_I2C_ADDRESS, 0x03, 0x80);
+	writeRegister(BQ25121A_I2C_ADDRESS, 0x03, 0x94);			// 0x80		// 24.03.03 전류값 수정
 
 	writeRegister(BQ25121A_I2C_ADDRESS, 0x04, 0x12);
 	writeRegister(BQ25121A_I2C_ADDRESS, 0x05, 0x78);
 	writeRegister(BQ25121A_I2C_ADDRESS, 0x06, 0xFF);
 	writeRegister(BQ25121A_I2C_ADDRESS, 0x07, 0x2D);			// 0x2C
 	
-	writeRegister(BQ25121A_I2C_ADDRESS, 0x08, 0x68);  			// 0x6C
-	writeRegister(BQ25121A_I2C_ADDRESS, 0x09, 0x3A);  	
+	writeRegister(BQ25121A_I2C_ADDRESS, 0x08, 0x6C);  			// 0x68		// 24.03.03 수정
+	writeRegister(BQ25121A_I2C_ADDRESS, 0x09, 0x3B);  			// 0x3A		// 24.03.03 수정
 
 	writeRegister(BQ25121A_I2C_ADDRESS, 0x0A, 0x80);
 	writeRegister(BQ25121A_I2C_ADDRESS, 0x0B, 0x42);
@@ -832,6 +832,29 @@ void setup()
 	digitalWrite(ledPin, LOW);
 
   resetBleService();
+
+  // BLE 전송 출력값 변경
+	esp_ble_tx_power_set(ESP_BLE_PWR_TYPE_DEFAULT, ESP_PWR_LVL_N0);
+
+  // BLE 파워 조정 값
+  // ESP_PWR_LVL_N12 = 0, /*!< Corresponding to -12dbm */
+  // ESP_PWR_LVL_N9 = 1, /*!< Corresponding to -9dbm */
+  // ESP_PWR_LVL_N6 = 2, /*!< Corresponding to -6dbm */
+  // ESP_PWR_LVL_N3 = 3, /*!< Corresponding to -3dbm */
+  // ESP_PWR_LVL_N0 = 4, /*!< Corresponding to 0dbm */
+  // ESP_PWR_LVL_P3 = 5, /*!< Corresponding to +3dbm */
+  // ESP_PWR_LVL_P6 = 6, /*!< Corresponding to +6dbm */
+  // ESP_PWR_LVL_P9 = 7, /*!< Corresponding to +9dbm */
+  // ESP_PWR_LVL_N14 = ESP_PWR_LVL_N12, /*!< Backward compatibility! Setting to -14dbm will actually result to -12dbm */
+  // ESP_PWR_LVL_N11 = ESP_PWR_LVL_N9, /*!< Backward compatibility! Setting to -11dbm will actually result to -9dbm */
+  // ESP_PWR_LVL_N8 = ESP_PWR_LVL_N6, /*!< Backward compatibility! Setting to -8dbm will actually result to -6dbm */
+  // ESP_PWR_LVL_N5 = ESP_PWR_LVL_N3, /*!< Backward compatibility! Setting to -5dbm will actually result to -3dbm */
+  // ESP_PWR_LVL_N2 = ESP_PWR_LVL_N0, /*!< Backward compatibility! Setting to -2dbm will actually result to 0dbm */
+  // ESP_PWR_LVL_P1 = ESP_PWR_LVL_P3, /*!< Backward compatibility! Setting to +1dbm will actually result to +3dbm */
+  // ESP_PWR_LVL_P4 = ESP_PWR_LVL_P6, /*!< Backward compatibility! Setting to +4dbm will actually result to +6dbm */
+  // ESP_PWR_LVL_P7 = ESP_PWR_LVL_P9, /*!< Backward compatibility! Setting to +7dbm will actually result to +9dbm */
+
+
 
 	ble_pair = 1;
 	pair_timer = 10;				// 10초
