@@ -340,7 +340,7 @@ void initBQ25121A()
 	writeRegister(BQ25121A_I2C_ADDRESS, 0x06, 0xFF);
 	writeRegister(BQ25121A_I2C_ADDRESS, 0x07, 0x2D);			// 0x2C
 	
-	writeRegister(BQ25121A_I2C_ADDRESS, 0x08, 0x6C);  			// 0x68		// 24.03.03 수정
+	writeRegister(BQ25121A_I2C_ADDRESS, 0x08, 0x68);  			// 0x68		// 24.03.03 수정
 	writeRegister(BQ25121A_I2C_ADDRESS, 0x09, 0x3B);  			// 0x3A		// 24.03.03 수정
 
 	writeRegister(BQ25121A_I2C_ADDRESS, 0x0A, 0x80);
