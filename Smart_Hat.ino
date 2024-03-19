@@ -686,7 +686,11 @@ void measureBattery() {
   else if(Battery_Data <= 0)
   {
     Battery_Data = 0;
-  }		
+  }
+
+  if((Battery_Data >> 2 < 0x12) {
+    digitalWrite(PSM_CD_Pin, LOW); // 충전 진행
+  }
 
   Serial.print("Battery : ");
   Serial.println(Battery_Data);
