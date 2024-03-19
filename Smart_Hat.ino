@@ -679,11 +679,11 @@ void measureBattery() {
   writeRegister(BQ25121A_I2C_ADDRESS, 0x0A, 0x80);
   Battery_Data = readRegister(BQ25121A_I2C_ADDRESS, 0x0A);
 
-  if(Battery_Data >= 100)
+  if(Battery_Data >= 0x7c)
   {
     Battery_Data = 100;
   }
-  else if(Battery_Data <= 0)
+  else if(Battery_Data <= 0x4c)
   {
     Battery_Data = 0;
   }
