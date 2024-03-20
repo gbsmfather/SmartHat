@@ -688,7 +688,7 @@ void measureBattery() {
     Battery_Data = 0;
   }
 
-  if((Battery_Data >> 2 < 0x12) {
+  if(Battery_Data >> 2 < 0x12) {
     digitalWrite(PSM_CD_Pin, LOW); // 충전 진행
   }
 
@@ -1037,8 +1037,13 @@ void loop()
         if(Tx_Retry > 0) {
           Tx_Retry = 0;
         }
-        
-        digitalWrite(ledPin, LOW);
+
+        if(Battery_Data <= 0x4c) {
+          digitalWrite(ledPin, HIGH);
+        }
+        else {
+          digitalWrite(ledPin, LOW);
+        }
         timer_10ms = 0;
 
         if(digitalRead(PG_Pin) == LOW) {
