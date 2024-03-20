@@ -988,7 +988,7 @@ void loop()
       
       Boot_Check = STATE_TO_RUN;
 
-      continue;
+      return;
     }
     
     if(digitalRead(SwPin) == LOW) {
