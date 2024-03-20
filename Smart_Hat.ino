@@ -679,14 +679,18 @@ void measureBattery() {
   writeRegister(BQ25121A_I2C_ADDRESS, 0x0A, 0x80);
   Battery_Data = readRegister(BQ25121A_I2C_ADDRESS, 0x0A);
 
-  if(Battery_Data >= 100)
+  if(Battery_Data >= 0x7c)
   {
     Battery_Data = 100;
   }
-  else if(Battery_Data <= 0)
+  else if(Battery_Data <= 0x4c)
   {
     Battery_Data = 0;
-  }		
+  }
+
+  if((Battery_Data >> 2 < 0x12) {
+    digitalWrite(PSM_CD_Pin, LOW); // 충전 진행
+  }
 
   Serial.print("Battery : ");
   Serial.println(Battery_Data);
