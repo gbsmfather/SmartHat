@@ -379,7 +379,7 @@ void initlSM6DSO32()
 	temp = temp | 0x40;
 	writeRegister(LSM6DSO32_ADDRESS, 0x5E, temp);	
 
-//	writeRegister(LSM6DSO32_ADDRESS, 0x0D, 0x0B);
+  // writeRegister(LSM6DSO32_ADDRESS, 0x0D, 0x0B);
 
 	Serial.println("LSM6DSO32 Initialized");
 }
