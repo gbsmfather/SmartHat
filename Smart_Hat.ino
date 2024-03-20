@@ -983,6 +983,12 @@ void loop()
     }
     else {
       digitalWrite(PSM_CD_Pin, HIGH); // 충전 해제 
+
+      delay(100); // 디바운스를 위한 짧은 지연
+      
+      Boot_Check = STATE_TO_RUN;
+
+      continue;
     }
     
     if(digitalRead(SwPin) == LOW) {
