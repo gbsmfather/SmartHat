@@ -688,7 +688,7 @@ void measureBattery() {
     Battery_Data = 0;
   }
 
-  if(Battery_Data >> 2 < 0x12) {
+  if((Battery_Data>>2) < 0x12) {
     digitalWrite(PSM_CD_Pin, LOW); // 충전 진행
   }
 
