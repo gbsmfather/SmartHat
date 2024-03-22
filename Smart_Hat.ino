@@ -580,12 +580,24 @@ void DataMake(void)
   txTest[DATA_FIELD] = ThermistorData >> 8;							// Thermistor High Data		3
   txTest[DATA_FIELD + 1] = ThermistorData;							// Thermistor Low Data		4    
   txTest[DATA_FIELD + 2] = Device_Temp;								// Device Temp			5
-  txTest[DATA_FIELD + 3] = accelerometerDataX;						// ACC_X[0]				6
-  txTest[DATA_FIELD + 4] = accelerometerDataY;						// ACC_Y[0]				7
-  txTest[DATA_FIELD + 5] = accelerometerDataZ;						// ACC_Z[0]				8
-  txTest[DATA_FIELD + 6] = gyroscopeDataX; // gyroscopeDataX; // abs(gyroscopeDataX-gyroscopeRefX);							// AXIS_X[0]			9
-  txTest[DATA_FIELD + 7] = gyroscopeDataY; // gyroscopeDataY; // abs(gyroscopeDataY-gyroscopeRefY);							// AXIS_Y[0]			10
-  txTest[DATA_FIELD + 8] = gyroscopeDataZ; // gyroscopeDataZ; // abs(gyroscopeDataZ-gyroscopeRefZ);							// AXIS_Z[0]			11
+
+  if(fullFlag) {
+    txTest[DATA_FIELD + 3] = 255;
+    txTest[DATA_FIELD + 4] = 255;
+    txTest[DATA_FIELD + 5] = 255;						// ACC_Z[0]				8
+    txTest[DATA_FIELD + 6] = 255; // gyroscopeDataX; // abs(gyroscopeDataX-gyroscopeRefX);							// AXIS_X[0]			9
+    txTest[DATA_FIELD + 7] = 255; // gyroscopeDataY; // abs(gyroscopeDataY-gyroscopeRefY);							// AXIS_Y[0]			10
+    txTest[DATA_FIELD + 8] = 255; // gyroscopeDataZ; // abs(gyroscopeDataZ-gyroscopeRefZ);
+  }
+  else {
+    txTest[DATA_FIELD + 3] = accelerometerDataX;						// ACC_X[0]				6
+    txTest[DATA_FIELD + 4] = accelerometerDataY;						// ACC_Y[0]				7
+    txTest[DATA_FIELD + 5] = accelerometerDataZ;						// ACC_Z[0]				8
+    txTest[DATA_FIELD + 6] = gyroscopeDataX; // gyroscopeDataX; // abs(gyroscopeDataX-gyroscopeRefX);							// AXIS_X[0]			9
+    txTest[DATA_FIELD + 7] = gyroscopeDataY; // gyroscopeDataY; // abs(gyroscopeDataY-gyroscopeRefY);							// AXIS_Y[0]			10
+    txTest[DATA_FIELD + 8] = gyroscopeDataZ; // gyroscopeDataZ; // abs(gyroscopeDataZ-gyroscopeRefZ);							// AXIS_Z[0]			11
+  }
+
   txTest[DATA_FIELD + 9] = Battery_Data; 							// Battery				12
 
 	for(i = 0; i < (length + 2); i++)
